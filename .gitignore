@@ -43,5 +43,7 @@
 !/test/*.ml
 !/test/*.c
 
+shootout/*
+
 # Backup files
 *~
