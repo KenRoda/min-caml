@@ -1,0 +1,94 @@
+問1
+$ make
+$ ./min-caml -debug Parser target
+$ ./min-caml -debug KNormal target
+で動作が確認できます。
+Syntax.tとKNormal.tを整形して出力する関数を定義した。
+どちらも再帰関数で、パターンマッチングを用いて再帰的に出力するようにした。
+環境によってWarnigが出るかもしれないが、今回私が編集したところに依るものではない。
+また、第２回課題の共通部分式削除も実装されている。
+
+追加ファイル
+debug.ml
+debug.mli
+knormal.ml
+knormal.mli
+変更ファイル
+Makefile
+main.ml
+
+動作例:
+$ ./min-caml -debug = Parser target
+Let
+    x i
+    Int 1
+    Let
+        y i
+        Int 3
+        Let
+            a i
+            Add
+                Var x
+                Var y
+            Let
+                b i
+                Add
+                    Var x
+                    Var y
+                App
+                    Var print_int
+                    Add
+                        Var a
+                        Var b
+                        
+$ ./min-caml -debug = KNormal target
+-------------------------
+Normal KNormal
+-------------------------
+  LET x =
+    INT 1
+  IN
+  LET y =
+    INT 3
+  IN
+  LET a =
+    ADD x y
+  IN
+  LET b =
+    ADD x y
+  IN
+  LET c =
+    LET d =
+      INT 11
+    IN
+    VAR d
+  IN
+  LET Ti1 =
+    ADD a b
+  IN
+  EXTFUNAPP print_int Ti1
+-------------------------
+Delete Duplication
+-------------------------
+  LET x =
+    INT 1
+  IN
+  LET y =
+    INT 3
+  IN
+  LET a =
+    ADD x y
+  IN
+  LET b =
+    VAR a
+  IN
+  LET c =
+    LET d =
+      INT 11
+    IN
+    VAR d
+  IN
+  LET Ti1 =
+    ADD a b
+  IN
+  EXTFUNAPP print_int Ti1

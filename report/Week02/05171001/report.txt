@@ -1,0 +1,136 @@
+問1
+最初にα変換したもの
+let rec x_0 x_1 =(
+  let x_2 = (
+    let x_3 = (x_1 - (-x_1))
+    in
+      (x_3 - (let x_4 = ( -x_3 ) in x_4 - (-x_4)))
+  )
+  in
+    (x_2 - (-x_2))
+) in
+  let x_5 = (let x_6 = 125 in x_0 x_6) in x_5 - (- x_5);;
+
+前半:
+let rec x_0 x_1 =(
+  let x_2 = (
+  let x_3 = (
+  let x_7 = - x_1 in
+  x_1 - x_7) in
+  (let x_8 = (
+  let x_4 = ( -x_3 ) in
+  (let x_9 = -x_4 in
+  x_4 - x_9))in
+  (x_3 - x_8))) in
+  (let x_10 = - x_2 in x_2 - x_10)) in
+  let x_5 = (
+  let x_6 = 125 in
+  x_0 x_6) in
+  (let x_11 = -x_5 in
+  x_5 - x_11);; (* 3000 *)
+
+後半:
+let x_6 = 125 in
+let x_1 = x_6 in
+let x_7 = - x_1 in
+let x_3 = x_1 - x_7 in
+let x_4 = -x_3 in
+let x_9 = -x_4 in
+let x_8 = x_4 - x_9 in
+let x_2 = x_3 - x_8 in
+let x_10 = - x_2 in
+let x_5 = x_2 - x_10 in
+let x_11 = -x_5 in
+x_5 - x_11;;(* 3000 *)
+
+問2
+$ make && ./min-caml -debug KNormal target
+で動作確認が出来ます。
+
+・変更ファイル
+knormal.ml
+knormal.mli
+main.ml
+
+・考察
+knormal.mlに
+let rec delete_duplication list e =
+  match e with
+  | Let((x, t), e1, e2) ->
+    (try
+       let r = Hashtbl.find list e1 in
+       Let((x, t), Var(r), (delete_duplication list e2))
+     with
+     | _ ->
+       Hashtbl.add list e1 x;
+       Let((x, t), e1, (delete_duplication list e2)))
+  | _ -> e
+  を実装しました。
+
+Hashtblに今までのLetの情報をストックしていき、既に登録されていた場合は共通式を削除します。
+
+動作例の対象は
+以下のプログラムが書かれたtarget.mlです。
+let x = 1 in
+let y = 3 in
+let a = x + y in
+let b = x + y in
+print_int (a+b)
+
+
+・動作例:
+-------------------------
+Normal KNormal
+-------------------------
+  LET x =
+    INT 1
+  IN
+  LET y =
+    INT 3
+  IN
+  LET a =
+    ADD x y
+  IN
+  LET b =
+    ADD x y
+  IN
+  LET Ti1 =
+    ADD a b
+  IN
+  EXTFUNAPP print_int Ti1
+***********Duplication detected***********
+  ADD x y
+***********is a duplication***************
+-------------------------
+Delete Duplication
+-------------------------
+  LET x =
+    INT 1
+  IN
+  LET y =
+    INT 3
+  IN
+  LET a =
+    ADD x y
+  IN
+  LET b =
+    VAR a
+  IN
+  LET Ti1 =
+    ADD a b
+  IN
+  EXTFUNAPP print_int Ti1
+
+となり、共通式の削除が確認できました。
+
+・プログラムの意味を変えないための条件について
+削除したい共通部分式Nについて、その中に登場する変数について、
+環境が同じである必要があるとおもいます。　例えば、
+
+let x = 1 in
+let y = 3 in
+let a = x + y in
+let y = 4 in
+let b = x + y in
+print_int (a+b)
+は削除できません。
