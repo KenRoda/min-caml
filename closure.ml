@@ -99,8 +99,93 @@ let rec g env known = function (* クロージャ変換ルーチン本体 (caml2
   | KNormal.Put(x, y, z) -> Put(x, y, z)
   | KNormal.ExtArray(x) -> ExtArray(Id.L(x))
   | KNormal.ExtFunApp(x, ys) -> AppDir(Id.L("min_caml_" ^ x), ys)
+let rec arg_list_to_string string list =
+  match list with
+  | [] -> string
+  | (x,t)::ys -> arg_list_to_string (string ^ x ^ " ") ys
+
+let rec show_content f indent t = match t with
+  | Unit -> Printf.fprintf f "%s" (indent ^ "()")
+  | Int(i) -> Printf.fprintf f "%s" (string_of_int i)
+  | Float(ff) -> Printf.fprintf f "%s" (string_of_float ff)
+  | Neg(x) | FNeg(x) -> Printf.fprintf f "%s" ("- " ^ x)
+  | Add(x, y) -> Printf.fprintf f "%s" (x ^ " + " ^ y)
+  | Sub(x, y) -> Printf.fprintf f "%s" (x ^ " - " ^ y)
+  (* | Mul(x, y) -> Printf.fprintf f "%s" (x ^ " * " ^ y)
+  | Div(x, y) -> Printf.fprintf f "%s" (x ^ " / " ^ y) *)
+  | FAdd(x, y) -> Printf.fprintf f "%s" (x ^ " .+ " ^ y)
+  | FSub(x, y) -> Printf.fprintf f "%s" (x ^ " .- " ^ y)
+  | FMul(x, y) -> Printf.fprintf f "%s" (x ^ " .* " ^ y)
+  | FDiv(x, y) -> Printf.fprintf f "%s" (x ^ " ./ " ^ y)
+  | IfEq(x, y, e1, e2) ->
+     Printf.fprintf f "%s" (indent ^ "if " ^ x ^ " = " ^ y ^ " then\n");
+     (match e1 with
+      | Int(_) | Float(_) | Neg(_) | Add(_, _) | Sub(_, _) | FAdd(_, _) | FSub(_, _) | FMul(_, _) | FDiv(_, _) | Var(_) | Tuple(_) | Get(_, _) | Put(_, _, _) | AppCls(_, _) | AppDir(_, _) | Unit ->
+        Printf.fprintf f "%s" (indent ^ "  "); show_content f "" e1; Printf.fprintf f "%s" "\n"
+      | _ -> show_content f (indent ^ "  ") e1);
+     Printf.fprintf f "%s" (indent ^ "else\n");
+     (match e2 with
+      | Int(_) | Float(_) | Neg(_) | Add(_, _) | Sub(_, _) | FAdd(_, _) | FSub(_, _) | FMul(_, _) | FDiv(_, _) | Var(_) | Tuple(_) | Get(_, _) | Put(_, _, _) | AppCls(_, _) | AppDir(_, _) | Unit ->
+        Printf.fprintf f "%s" (indent ^ "  "); show_content f "" e2; Printf.fprintf f "%s" "\n"
+      | _ -> show_content f (indent ^ "  ") e2)
+  | IfLE(x, y, e1, e2) ->
+     Printf.fprintf f "%s" (indent ^ "if " ^ x ^ " < " ^ y ^ " then\n");
+     (match e1 with
+      | Int(_) | Float(_) | Neg(_) | Add(_, _) | Sub(_, _) | FAdd(_, _) | FSub(_, _) | FMul(_, _) | FDiv(_, _) | Var(_) | Tuple(_) | Get(_, _) | Put(_, _, _) | AppCls(_, _) | AppDir(_, _) | Unit ->
+        Printf.fprintf f "%s" (indent ^ "  "); show_content f "" e1; Printf.fprintf f "%s" "\n"
+      | _ -> show_content f (indent ^ "  ") e1);
+     Printf.fprintf f "%s" (indent ^ "else\n");
+     (match e2 with
+      | Int(_) | Float(_) | Neg(_) | Add(_, _) | Sub(_, _) | FAdd(_, _) | FSub(_, _) | FMul(_, _) | FDiv(_, _) | Var(_) | Tuple(_) | Get(_, _) | Put(_, _, _) | AppCls(_, _) | AppDir(_, _) | Unit ->
+        Printf.fprintf f "%s" (indent ^ "  "); show_content f "" e2; Printf.fprintf f "%s" "\n"
+      | _ -> show_content f (indent ^ "  ") e2)
+  | Let((x, t), e1, e2) ->
+     Printf.fprintf f "%s" (indent ^ "let " ^ x ^ " = ");
+     (match e1 with
+      | Int(_) | Float(_) | Neg(_) | Add(_, _) | Sub(_, _) | FAdd(_, _) | FSub(_, _) | FMul(_, _) | FDiv(_, _) | Var(_) | Tuple(_) | Get(_, _) | Put(_, _, _) | AppCls(_, _) | AppDir(_, _) | Unit ->
+        show_content f "" e1; Printf.fprintf f "%s" " in\n"
+      | _ -> Printf.fprintf f "%s" "\n"; show_content f (indent ^ "  ") e1; Printf.fprintf f "%s" (indent ^ "in\n"));
+     (match e2 with
+      | Int(_) | Float(_) | Neg(_) | Add(_, _) | Sub(_, _) | FAdd(_, _) | FSub(_, _) | FMul(_, _) | FDiv(_, _) | Var(_) | Tuple(_) | Get(_, _) | Put(_, _, _) | AppCls(_, _) | AppDir(_, _) | Unit ->
+        Printf.fprintf f "%s" indent; show_content f "" e2; Printf.fprintf f "%s" "\n"
+      | _ -> show_content f indent e2)
+  | Var(x) -> Printf.fprintf f "%s" x
+  | MakeCls((x, t), { entry=Id.L(l); actual_fv=xs }, body) ->
+     Printf.fprintf f "%s" (indent ^ "make_closure " ^ x ^ "=(" ^ l ^ ",(" ^ (String.concat "," xs) ^ ")) in\n");
+     show_content f indent body
+  | AppCls(x, ys) -> Printf.fprintf f "%s" ("apply_closure(" ^ x ^ ", " ^ (String.concat "," ys) ^ ")")
+  | AppDir(Id.L(l), ys) -> Printf.fprintf f "%s" ("apply_direct(" ^ l ^ ", " ^ (String.concat "," ys) ^ ")")
+  | Tuple(xs) -> Printf.fprintf f "%s" ("(" ^ (String.concat "," xs) ^ ")")
+  | LetTuple(args, x, e) ->
+     Printf.fprintf f "%s" (indent ^ "let (" ^ (arg_list_to_string "" args) ^ ") = " ^ x ^ " in\n");
+     (match e with
+      | Int(_) | Float(_) | Neg(_) | Add(_, _) | Sub(_, _) | FAdd(_, _) | FSub(_, _) | FMul(_, _) | FDiv(_, _) | Var(_) | Tuple(_) | Get(_, _) | Put(_, _, _) | AppCls(_, _) | AppDir(_, _) | Unit ->
+        Printf.fprintf f "%s" indent; show_content f "" e; Printf.fprintf f "%s" "\n"
+      | _ -> show_content f (indent ^ "  ") e)
+  | Get(x, y) -> Printf.fprintf f "%s" (x ^ ".(" ^ y ^ ")")
+  | Put(x, y, z) -> Printf.fprintf f "%s" (x ^ ".(" ^ y ^ ") <- " ^ z)
+  | ExtArray(Id.L(l)) -> Printf.fprintf f "%s" (indent ^ "ExtArray " ^ l ^ "\n")
+
+let show_fundef f { name = (Id.L(x), t); args = args; formal_fv = fvs; body } =
+  Printf.fprintf f "%s" ("\tFunction " ^ x ^ " (" ^ (arg_list_to_string " "args) ^ ")\n");
+  Printf.fprintf f "%s" ("\t  Free variables: (" ^ (arg_list_to_string " " fvs) ^ ")\n");
+  (match body with
+   | Int(_) | Float(_) | Neg(_) | Add(_, _) | Sub(_, _) | FAdd(_, _) | FSub(_, _) | FMul(_, _) | FDiv(_, _) | Var(_) | Tuple(_) | Get(_, _) | Put(_, _, _) | AppCls(_, _) | AppDir(_, _) | Unit ->
+     Printf.fprintf f "%s" "\t  "; show_content f "" body; Printf.fprintf f "%s" "\n"
+   | _ -> show_content f "\t  " body)
+
+let show_prog f (Prog(fs, body)) =
+  Printf.fprintf f "\t-----Top Level Functions-----\n";
+  List.iter (show_fundef f)fs;
+  Printf.fprintf f "\t-----Main Routine-----\n";
+  show_content f "\t" body;
+  Printf.fprintf f "=======================\n"
 
 let f e =
   toplevel := [];
   let e' = g M.empty S.empty e in
-  Prog(List.rev !toplevel, e')
+  let res = Prog(List.rev !toplevel, e') in
+  let clochan = open_out ("result/closure.txt") in
+  show_prog clochan res;
+  close_out clochan;
+  res

@@ -1,0 +1,76 @@
+問1,3しか回答していないため、この.txtファイルのみで提出します。
+問1
+問の逆を行う。
+コンパイラ実験第１回課題のdebug.mlで、下のような局所関数定義をしていた。
+自由変数は用いていない。
+
+let print_parser (out_channel:out_channel) (syntax:Syntax.t) :unit =
+  let rec iter (syntax:Syntax.t) :unit =
+    (match syntax with
+      | Unit ->
+        print_string "Unit";
+      | Bool b ->
+        open_hbox ();
+        print_string "Bool";
+        print_space ();
+        print_bool b;
+        (* 省略 *)
+    in iter syntax
+
+iterは、syntaxを引数に取っているが、print_parserですでに取っているので、
+不要であった。
+これは、自由変数を使えば少し簡潔に書けた。
+具体的には、下のようにすれば良かったのである。
+
+let print_parser (out_channel:out_channel) (syntax:Syntax.t) :unit =
+  let rec iter :unit　=
+    (match syntax with
+      | Unit ->
+        print_string "Unit";
+      | Bool b ->
+        open_hbox ();
+        print_string "Bool";
+        print_space ();
+        print_bool b;
+        (* 省略 *)
+    in iter()
+
+問3
+1. 作られる。
+理由. fに自由変数zがあるため　
+ラベル. Lf
+変数. z
+
+2. 作られない。
+理由. gは自由変数を持たないし、直接呼び出されてしかいないため。
+
+3. 作られる。
+理由. fは自由変数を持たないが、部分適用されているため。
+ラベル. Lf
+変数. なし
+
+4.
+gについて. 作られる。
+理由. 自由変数は持たないが最後の in g で、部分適用されているため。
+ラベル. Lg
+変数. なし
+
+iについて. 作られる。
+理由. 自由変数hを持つことに加え、in i で、部分適用されているため。
+ラベル. Li
+変数. h
+
+
+5.
+iについて. 作られる。
+理由. 自由変数は持たないが4行目でiと部分評価されているため。
+ラベル. Li
+変数. なし
+
+fについて. 作られる。
+理由. 自由変数i,zを持つことに加え、(f,8) で、部分適用されているため。
+ラベル. Lf
+変数. i,z
+
+6. 作られない。
+理由. 自由変数を持たないし、直接呼び出されているのみであるため。
