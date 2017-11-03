@@ -52,29 +52,29 @@ let rec ack x y =
 ----悪い割当----
 let rec ack R0 R1 =
   if R0 = 0 then
-    save_y(R1);(* y->R1 *)
+    save(y);(* y->R1 *)
     let R1 = R1 + 1 in
       R1 (* return *)
   else if R1=0 then
-    save_x(R0);(* x->R0 *)
+    save(x);(* x->R0 *)
     let R0 = R0 - 1 in
-    save_y(R1);(* y->R1 *)
+    save(y);(* y->R1 *)
     let R1 = R1 + 1 in
-      save_b(R0);(* b->R0 *)
-      save_c(R1);(* c->R1 *)
+      save(b);(* b->R0 *)
+      save(c);(* c->R1 *)
       ack R0 R1 (* return *)
   else
-    save_x(R0);(* x->R0 *)
+    save(x);(* x->R0 *)
     let R0 = R0 - 1 in
-    save_y(R1);(* y->R1 *)
+    save(y);(* y->R1 *)
     let R1 = R1 - 1 in
-    save_d(R0);(* d->R0 *)
-    save_e(R1);(* e->R1 *)
-    let R0 = restore_x in
+    save(d);(* d->R0 *)
+    save(e);(* e->R1 *)
+    restore(x);(* x->R0 *)
     ack R0 R1;
     let R1 = R0 in
-      save_f(R1);(* f->R1 *)
-      R0 = restore_d in
+      save(f);(* f->R1 *)
+      restore(d);(* d->R0 *)
       ack R0 R1 (* return *)
 
 上が悪い割当である。生存解析をせず、関数呼び出しの前、代入の前にsaveするようにしている。
@@ -91,17 +91,17 @@ let rec ack R0 R1 =
     let R1 = R1 - 1 in
       ack R0 R1
   else
-    save_x(R0);(* x->R0 *)
+    save(x);(* x->R0 *)
     let R0 = R0 - 1 in
     let R1 = R1 - 1 in
     save(d);(* d->R0 *)
-    R0 = restore(x) in
+    restore(x);(* x->R0 *)
     ack R0 R1;
       let R1 = R0 in
-      R0 = restore_d in
+      restore(d)(* d->R0 *)
         ack R0 R1
 
-上が良い割当である。生存解析をして関数呼び出しや代入の際に、今後も必要になる変数のみsaveするようにした。
+上が良い割当である。生存解析をして、関数呼び出しや代入の際、今後も必要になる変数のみsaveするようにした。
 restore回数が2に対し、saveも2回になっている。
 一般的に、回数について
 restore >= save
